@@ -3,8 +3,6 @@
 baseUri = "https://cloud.uipath.com/";
 authorizeUri = baseUri & "/identity_/connect/authorize";
 tokenUri = baseUri & "/identity_/connect/token";
-// Create app instead, set correct redirect url (same as below) and the needed scopes.
-scope = "OR.Folders.Read OR.Monitoring offline_access"; // supply scope dynamically?
 redirect_uri = "https://oauth.powerbi.com/views/oauthredirect.html";  
 windowWidth = 1200;
 windowHeight = 1000;
@@ -14,7 +12,7 @@ pageLimit = 1000;
 shared UiPathConnector.ReadEntities = Value.ReplaceType(ReadEntities, UiPathConnectorReadTypes);
 
 [DataSource.Kind="UiPathConnectorRead"]
-shared UiPathConnector.Credential = (accountName as text, tenantName as text, client_id as text) => 
+shared UiPathConnector.Credential = (accountName as text, tenantName as text, client_id as text, datapoint as text, scope as text) => 
    Extension.CurrentCredential(true);
 
 // Data Service UI publishing description
@@ -47,21 +45,21 @@ UiPathConnectorRead = [
             json = Json.Document(dataSourcePath),
             accountName = json[accountName],
             tenantName = json[tenantName],
-            client_id = json[client_id]
+            client_id = json[client_id],
+            datapoint = json[datapoint],
+            scope = json[scope]
         in
-            {"UiPathConnector.ReadEntities", accountName, tenantName, client_id}
+            {"UiPathConnector.ReadEntities", accountName, tenantName, client_id, datapoint, scope}
 ];
 
-ReadEntities = (accountName as text, tenantName as text, client_id as text) as table =>
+ReadEntities = (accountName as text, tenantName as text, client_id as text, datapoint as text, scope as text) as table =>
     let
-        schemaUrl = baseUri & "/" & accountName & "/" & tenantName & "/orchestrator_/odata/Alerts", // Set Datapoint based on user input
+        schemaUrl = baseUri & "/" & accountName & "/" & tenantName & "/orchestrator_/odata/" & datapoint,
         body = Json.Document(Web.Contents(schemaUrl, [Headers=[Accept="application/json"]])),
         values = body[value],
         finalTable = Table.FromList(values, Splitter.SplitByNothing(), null, null, ExtraValues.Error)
     in
         finalTable;
-
-
 
 UiPathConnectorReadTypes = type function (
     accountName as (type text meta [
@@ -72,12 +70,22 @@ UiPathConnectorReadTypes = type function (
     tenantName as (type text meta [
         Documentation.FieldCaption = Extension.LoadString("TenantNameCaption"),
         Documentation.FieldDescription = Extension.LoadString("TenantNameDescription"),
-        Documentation.SampleValues = {"finance"}
+        Documentation.SampleValues = {"Default"}
     ]),
     client_id as (type text meta [
-        Documentation.FieldCaption = "App ID",
-        Documentation.FieldDescription = "App ID generated from UiPath Portal",
+        Documentation.FieldCaption = Extension.LoadString("AppIDCaption"),
+        Documentation.FieldDescription = Extension.LoadString("AppIDDescription"),
         Documentation.SampleValues = {"8bc59efd-d5c0-49de-a5bc-501a38d56e5c"}
+    ]),
+    datapoint as (type text meta [
+        Documentation.FieldCaption = Extension.LoadString("DatapointCaption"),
+        Documentation.FieldDescription = Extension.LoadString("DatapointDescription"),
+        Documentation.SampleValues = {"Folders"}
+    ]),
+    scope as (type text meta [
+        Documentation.FieldCaption = Extension.LoadString("ScopeCaption"),
+        Documentation.FieldDescription = Extension.LoadString("ScopeDescription"),
+        Documentation.SampleValues = {"OR.Folders.Read"}
     ]))
     as table meta [
         Documentation.Name = Extension.LoadString("ReadTypesName"),
@@ -88,11 +96,12 @@ StartLogin = (dataSourcePath, state, display) =>
     let
         json = Json.Document(dataSourcePath),
         client_id = json[client_id],
+        scope = json[scope],
         CodeVerifier = Text.NewGuid() & Text.NewGuid(),
         AuthorizeUrl = authorizeUri & "?" & Uri.BuildQueryString([
             client_id = client_id,
             state = state,
-            scope = scope,
+            scope = scope & " offline_access",
             redirect_uri = redirect_uri,
             code_challenge = CreateSha256Hash(CodeVerifier),
             code_challenge_method = "S256",

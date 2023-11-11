@@ -144,4 +144,22 @@
   <data name="TenantNameDescription" xml:space="preserve">
     <value>Tenant name for your Data Service tenant</value>
   </data>
+  <data name="AppIDCaption" xml:space="preserve">
+    <value>App ID</value>
+  </data>
+  <data name="AppIDDescription" xml:space="preserve">
+    <value>App ID generated from UiPath Portal</value>
+  </data>
+  <data name="DatapointCaption" xml:space="preserve">
+    <value>Datapoint</value>
+  </data>
+  <data name="DatapointDescription" xml:space="preserve">
+    <value>Orchestrator datapoint. Like 'Folders'</value>
+  </data>
+  <data name="ScopeCaption" xml:space="preserve">
+    <value>Scope</value>
+  </data>
+  <data name="ScopeDescription" xml:space="preserve">
+    <value>Required scope for the given datapoint. Like 'Folders' will require the scope 'OR.Folders.Read'</value>
+  </data>
 </root>
